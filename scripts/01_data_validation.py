@@ -1,6 +1,7 @@
 import mlflow
 from sklearn.datasets import load_breast_cancer
 
+
 def validate_data():
     mlflow.set_experiment("Breast Cancer - Data Validation")
 
@@ -12,11 +13,11 @@ def validate_data():
         df = cancer_data.frame
 
         num_rows, num_cols = df.shape
-        num_classes = df['target'].nunique()
+        num_classes = df["target"].nunique()
         missing_values = df.isnull().sum().sum()
-        
+
         # คำนวณสัดส่วนคลาสน้อยสุด
-        class_balance = df['target'].value_counts(normalize=True).min()
+        class_balance = df["target"].value_counts(normalize=True).min()
 
         print(f"Dataset shape: {num_rows} rows, {num_cols} columns")
         print(f"Number of classes: {num_classes}")
@@ -40,6 +41,7 @@ def validate_data():
             raise SystemExit("Data validation failed — หยุด pipeline ไม่ให้ไปขั้นถัดไป")
 
         print("Data validation run finished.")
+
 
 if __name__ == "__main__":
     validate_data()

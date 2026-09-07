@@ -1,5 +1,6 @@
 import os
 import sys
+
 import mlflow
 import mlflow.sklearn
 import pandas as pd
@@ -9,6 +10,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+
 
 def train_evaluate_register(preprocessing_run_id, C=1.0):
     ACCURACY_THRESHOLD = 0.95
@@ -21,20 +23,24 @@ def train_evaluate_register(preprocessing_run_id, C=1.0):
         mlflow.log_param("preprocessing_run_id", preprocessing_run_id)
 
         try:
-            local_artifact_path = download_artifacts(run_id=preprocessing_run_id, artifact_path="processed_data")
+            local_artifact_path = download_artifacts(
+                run_id=preprocessing_run_id, artifact_path="processed_data"
+            )
             train_df = pd.read_csv(os.path.join(local_artifact_path, "train.csv"))
             test_df = pd.read_csv(os.path.join(local_artifact_path, "test.csv"))
         except Exception as e:
             print(f"Error loading artifacts: {e}")
             sys.exit(1)
 
-        X_train, y_train = train_df.drop('target', axis=1), train_df['target']
-        X_test, y_test = test_df.drop('target', axis=1), test_df['target']
+        X_train, y_train = train_df.drop("target", axis=1), train_df["target"]
+        X_test, y_test = test_df.drop("target", axis=1), test_df["target"]
 
-        pipeline = Pipeline([
-            ('scaler', StandardScaler()),
-            ('model', LogisticRegression(C=C, random_state=42, max_iter=10000))
-        ])
+        pipeline = Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                ("model", LogisticRegression(C=C, random_state=42, max_iter=10000)),
+            ]
+        )
         pipeline.fit(X_train, y_train)
 
         y_pred = pipeline.predict(X_test)
@@ -51,20 +57,23 @@ def train_evaluate_register(preprocessing_run_id, C=1.0):
         mlflow.log_metric("roc_auc", roc_auc)
 
         model_info = mlflow.sklearn.log_model(
-            sk_model=pipeline,
-            name="cancer_classifier_pipeline",
-            input_example=X_train.head(5)
+            sk_model=pipeline, name="cancer_classifier_pipeline", input_example=X_train.head(5)
         )
 
         if acc >= ACCURACY_THRESHOLD and roc_auc >= ROC_AUC_THRESHOLD:
-            print(f"Model meets thresholds (Acc >= {ACCURACY_THRESHOLD}, ROC-AUC >= {ROC_AUC_THRESHOLD}). Registering...")
+            print(
+                f"Model meets thresholds (Acc >= {ACCURACY_THRESHOLD}, ROC-AUC >= {ROC_AUC_THRESHOLD}). Registering..."
+            )
             registered_model = mlflow.register_model(model_info.model_uri, MODEL_NAME)
-            
+
             client = MlflowClient()
-            client.set_registered_model_alias(name=MODEL_NAME, alias="staging", version=registered_model.version)
+            client.set_registered_model_alias(
+                name=MODEL_NAME, alias="staging", version=registered_model.version
+            )
             print(f"Set alias '@staging' -> {MODEL_NAME} version {registered_model.version}")
         else:
             print("Model performance below threshold. Not registering.")
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
